@@ -3,25 +3,13 @@
 import { useEffect, useState } from "react";
 import { Box, LinearProgress } from "@mui/material";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Provider } from "react-redux";
 import { AuthProvider } from "@/components/providers/AuthProvider";
-import { makeStore } from "@/store/store";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import {
-  hideLoader,
-  selectIsLoading,
-  showLoader,
-} from "@/store/slices/appSlice";
+import { useAppStore } from "@/store/app-store";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { LocaleProvider } from "./LocaleProvider";
 import { NotificationProvider } from "./NotificationProvider";
 
-export function StateProviders({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [store] = useState(makeStore);
+export function StateProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -37,36 +25,36 @@ export function StateProviders({
   );
 
   return (
-    <Provider store={store}>
-      <QueryClientProvider client={queryClient}>
-        <LocaleProvider>
-          <ThemeProvider>
-            <NotificationProvider>
-              <AuthProvider>
-                <GlobalLoading>{children}</GlobalLoading>
-              </AuthProvider>
-            </NotificationProvider>
-          </ThemeProvider>
-        </LocaleProvider>
-      </QueryClientProvider>
-    </Provider>
+    <QueryClientProvider client={queryClient}>
+      <LocaleProvider>
+        <ThemeProvider>
+          <NotificationProvider>
+            <AuthProvider>
+              <GlobalLoading>{children}</GlobalLoading>
+            </AuthProvider>
+          </NotificationProvider>
+        </ThemeProvider>
+      </LocaleProvider>
+    </QueryClientProvider>
   );
 }
 
 function GlobalLoading({ children }: { children: React.ReactNode }) {
-  const dispatch = useAppDispatch();
-  const loading = useAppSelector(selectIsLoading);
+  const loading = useAppStore((state) => state.pendingRequests > 0);
+  const showLoader = useAppStore((state) => state.showLoader);
+  const hideLoader = useAppStore((state) => state.hideLoader);
 
   useEffect(() => {
     const handleLoading = (event: WindowEventMap["library:loading"]) => {
-      dispatch(event.detail === 1 ? showLoader() : hideLoader());
+      if (event.detail === 1) showLoader();
+      else hideLoader();
     };
 
     window.addEventListener("library:loading", handleLoading);
     return () => {
       window.removeEventListener("library:loading", handleLoading);
     };
-  }, [dispatch]);
+  }, [hideLoader, showLoader]);
 
   return (
     <Box sx={{ minHeight: "100vh" }}>

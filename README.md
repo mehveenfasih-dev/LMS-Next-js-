@@ -74,6 +74,10 @@ created as members. Access-token refresh is performed server-side.
 Set `AUTH_SECRET` to a strong random value. Never commit `.env.local` or share
 OAuth client secrets.
 
+See [the production ecosystem guide](./docs/production-ecosystem.md)
+for secret handling, validation, security controls, monitoring, testing,
+and caching behavior.
+
 ## Data flow and database behavior
 
 - Books, normalized author/category links, physical copies, users, and

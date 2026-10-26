@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import GoogleIcon from "@mui/icons-material/Google";
 import {
   Alert,
@@ -14,12 +14,12 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn as authSignIn } from "next-auth/react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../../components/providers/AuthProvider";
 import { useLocale } from "@/components/providers/LocaleProvider";
-import {
-  registerUserAction,
-  type RegistrationState,
-} from "./actions";
+import { registerUserAction, type RegistrationState } from "./actions";
+import { registrationSchema, type RegistrationInput } from "./schemas";
 
 const initialRegistrationState: RegistrationState = {};
 
@@ -102,7 +102,11 @@ function LoginForm({
         title={t("Welcome back")}
         description={t("Sign in to manage your books and borrowing requests.")}
       />
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
       <Box component="form" onSubmit={submit}>
         <Stack spacing={2}>
           <TextField
@@ -148,55 +152,80 @@ function LoginForm({
           )}
         </Stack>
       </Box>
-      <FormFooter prompt={t("New to Book Hub?")} linkLabel={t("Create an account")} href="/register" />
+      <FormFooter
+        prompt={t("New to Book Hub?")}
+        linkLabel={t("Create an account")}
+        href="/register"
+      />
     </Box>
   );
 }
 
 function RegistrationForm() {
   const { t } = useLocale();
-  const [state, formAction, pending] = useActionState(
-    registerUserAction,
-    initialRegistrationState,
-  );
+  const [state, setState] = useState(initialRegistrationState);
+  const [pending, startTransition] = useTransition();
+  const form = useForm<RegistrationInput>({
+    resolver: zodResolver(registrationSchema),
+    defaultValues: { name: "", email: "", password: "" },
+  });
+
+  const submit = form.handleSubmit((values) => {
+    const formData = new FormData();
+    formData.set("name", values.name);
+    formData.set("email", values.email);
+    formData.set("password", values.password);
+    startTransition(async () => {
+      setState(await registerUserAction(initialRegistrationState, formData));
+    });
+  });
 
   return (
     <Box className="auth-card">
       <AuthHeading
         title={t("Join the library")}
-        description={t("Create a member account to request books from our collection.")}
+        description={t(
+          "Create a member account to request books from our collection.",
+        )}
       />
-      {state.error && <Alert severity="error" sx={{ mb: 2 }}>{t(state.error)}</Alert>}
+      {state.error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {t(state.error)}
+        </Alert>
+      )}
       {state.registered && (
         <Alert severity="success" sx={{ mb: 2 }}>
-          {t("Account created. You can now sign in with your new credentials.")}
-          {" "}<MuiLink component={Link} href="/login">{t("Go to sign in")}</MuiLink>
+          {t("Account created. You can now sign in with your new credentials.")}{" "}
+          <MuiLink component={Link} href="/login">
+            {t("Go to sign in")}
+          </MuiLink>
         </Alert>
       )}
       {!state.registered && (
-        <Box action={formAction} component="form">
+        <Box onSubmit={submit} component="form">
           <Stack spacing={2}>
             <TextField
               autoComplete="name"
               label={t("Full name")}
-              name="name"
-              required
-              slotProps={{ htmlInput: { minLength: 2, maxLength: 80 } }}
+              {...form.register("name")}
+              error={Boolean(form.formState.errors.name)}
+              helperText={form.formState.errors.name?.message}
             />
             <TextField
               autoComplete="email"
               label={t("Email address")}
-              name="email"
-              required
               type="email"
+              {...form.register("email")}
+              error={Boolean(form.formState.errors.email)}
+              helperText={form.formState.errors.email?.message}
             />
             <TextField
               autoComplete="new-password"
               label={t("Password")}
-              name="password"
-              required
               type="password"
-              slotProps={{ htmlInput: { minLength: 8, maxLength: 128 } }}
+              {...form.register("password")}
+              error={Boolean(form.formState.errors.password)}
+              helperText={form.formState.errors.password?.message}
             />
             <Button
               disabled={pending}
@@ -209,7 +238,11 @@ function RegistrationForm() {
           </Stack>
         </Box>
       )}
-      <FormFooter prompt={t("Already a member?")} linkLabel={t("Sign in")} href="/login" />
+      <FormFooter
+        prompt={t("Already a member?")}
+        linkLabel={t("Sign in")}
+        href="/login"
+      />
     </Box>
   );
 }
@@ -258,22 +291,17 @@ function sanitizeNextPath(path: string) {
   return path.startsWith("/") && !path.startsWith("//") ? path : "/catalog";
 }
 
-function getPostSignInPath(
-  role: "admin" | "member",
-  nextPath?: string,
-) {
+function getPostSignInPath(role: "admin" | "member", nextPath?: string) {
   if (role === "admin") return "/dashboard";
   if (!nextPath) return "/my-requests";
 
   const safePath = sanitizeNextPath(nextPath);
-  return (
-    safePath === "/catalog" ||
+  return safePath === "/catalog" ||
     safePath.startsWith("/catalog/") ||
     safePath === "/my-requests" ||
     safePath.startsWith("/my-requests/") ||
     safePath === "/profile" ||
     safePath.startsWith("/profile/")
-  )
     ? safePath
     : "/my-requests";
 }

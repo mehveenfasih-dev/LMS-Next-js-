@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { Box, Button, Container, Typography } from "@mui/material";
 import { useLocale } from "@/components/providers/LocaleProvider";
 
@@ -14,6 +15,7 @@ export default function ErrorPage({
   const { t } = useLocale();
   useEffect(() => {
     console.error("Library application error:", error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (
@@ -23,7 +25,9 @@ export default function ErrorPage({
           {t("Something went wrong")}
         </Typography>
         <Typography color="text.secondary">
-          {t("The page could not be loaded. Try again, or return to the catalog.")}
+          {t(
+            "The page could not be loaded. Try again, or return to the catalog.",
+          )}
         </Typography>
         <Box sx={{ display: "flex", gap: 1.5, mt: 1 }}>
           <Button onClick={reset} variant="contained">

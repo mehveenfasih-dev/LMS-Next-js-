@@ -47,7 +47,7 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
               <Typography sx={{ fontWeight: 800 }}>Book Hub</Typography>
             </Stack>
           </Link>
-          <Box className="portal-mode-toggle">
+          <Box className="portal-mode-toggle" >
             <ColorModeToggle />
             <LanguageToggle />
           </Box>

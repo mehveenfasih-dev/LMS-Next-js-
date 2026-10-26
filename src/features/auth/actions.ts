@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { createUser } from "@/features/users/repository";
+import { registrationSchema } from "./schemas";
 
 export type RegistrationState = {
   error?: string;
@@ -18,23 +19,21 @@ export async function registerUserAction(
     return { error: "Sign out before creating a new member account." };
   }
 
-  const name = readString(formData, "name").trim();
-  const email = readString(formData, "email").trim().toLowerCase();
-  const password = readString(formData, "password");
-
-  if (name.length < 2 || name.length > 80) {
-    return { error: "Enter a name between 2 and 80 characters." };
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
-    return { error: "Enter a valid email address." };
-  }
-  if (password.length < 8 || password.length > 128) {
-    return { error: "Use a password between 8 and 128 characters." };
+  const input = registrationSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!input.success) {
+    return {
+      error:
+        "Enter a valid name and email, and use a password between 8 and 128 characters.",
+    };
   }
 
   try {
-    const user = await createUser({ name, email, password });
-    return { email: user.email, registered: true };
+    const registeredUser = await createUser(input.data);
+    return { email: registeredUser.email, registered: true };
   } catch (error) {
     if (
       error instanceof Error &&
@@ -45,9 +44,4 @@ export async function registerUserAction(
     console.error("Could not register the member account.", error);
     return { error: "Could not create your account. Please try again." };
   }
-}
-
-function readString(formData: FormData, key: string) {
-  const value = formData.get(key);
-  return typeof value === "string" ? value : "";
 }
