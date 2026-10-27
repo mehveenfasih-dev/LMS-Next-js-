@@ -24,7 +24,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
             <Typography sx={{ fontWeight: 800 }}>Book Hub</Typography>
           </Stack>
         </Link>
-       
+        <LanguageToggle />
       </Box>
       <Container maxWidth="sm">{children}</Container>
     </Box>

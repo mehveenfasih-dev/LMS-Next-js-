@@ -5,6 +5,8 @@ import {
 } from "@/features/library/repository";
 import { revalidatePath } from "next/cache";
 import { getActiveUserById } from "@/features/users/repository";
+import { guardMutatingRequest } from "@/lib/security/mutate-guard";
+import { rateLimit, rateLimitExceededResponse } from "@/lib/security";
 
 export async function GET() {
   const session = await auth();
@@ -31,7 +33,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const blocked = await guardMutatingRequest(request, "api:requests:write");
+  if (blocked) return blocked;
+
   const session = await auth();
+  // Identity and role come from the session + SQL Server, never from the body.
   const user = session?.user
     ? await getActiveUserById(session.user.id)
     : undefined;
@@ -39,6 +45,15 @@ export async function POST(request: Request) {
     return Response.json({ error: "Member access is required." }, {
       status: 403,
     });
+  }
+
+  const userLimited = await rateLimit(
+    `api:requests:write:user:${user.id}`,
+    20,
+    60_000,
+  );
+  if (!userLimited.ok) {
+    return rateLimitExceededResponse(userLimited.retryAfterSec);
   }
 
   let payload: unknown;
@@ -65,6 +80,7 @@ export async function POST(request: Request) {
       payload.bookId,
       user.id,
     );
+    // Path revalidation only; React Query clients must invalidate separately.
     revalidatePath("/requests");
     revalidatePath("/my-requests");
     revalidatePath("/dashboard");

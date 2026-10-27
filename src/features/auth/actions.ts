@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { createUser } from "@/features/users/repository";
+import { getRequestClientIp, parseFormData, rateLimit } from "@/lib/security";
 import { registrationSchema } from "./schemas";
 
 export type RegistrationState = {
@@ -9,6 +10,9 @@ export type RegistrationState = {
   email?: string;
   registered?: boolean;
 };
+
+const REGISTRATION_LIMIT = 5;
+const REGISTRATION_WINDOW_MS = 10 * 60 * 1000;
 
 export async function registerUserAction(
   _previousState: RegistrationState,
@@ -19,11 +23,24 @@ export async function registerUserAction(
     return { error: "Sign out before creating a new member account." };
   }
 
-  const input = registrationSchema.safeParse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
+  const clientIp = await getRequestClientIp();
+  const limited = await rateLimit(
+    `register:${clientIp}`,
+    REGISTRATION_LIMIT,
+    REGISTRATION_WINDOW_MS,
+  );
+  if (!limited.ok) {
+    return {
+      error: "Too many registration attempts. Please try again later.",
+    };
+  }
+
+  // Client validation is for UX only; re-validate every field on the server.
+  const input = parseFormData(registrationSchema, formData, [
+    "name",
+    "email",
+    "password",
+  ]);
   if (!input.success) {
     return {
       error:

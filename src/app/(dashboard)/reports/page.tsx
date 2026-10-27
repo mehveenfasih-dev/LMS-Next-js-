@@ -1,11 +1,67 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import { Box, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import dynamic from "next/dynamic";
+import {
+  Box,
+  Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Typography,
+} from "@mui/material";
 import { LocaleText } from "@/components/common/LocaleText";
 import {
   getCategoryBookCounts,
   getMonthlyBorrowingCounts,
 } from "@/features/library/repository";
+
+const MonthlyActivityChart = dynamic(
+  () =>
+    import("@/features/library/components/MonthlyActivityChart").then(
+      (mod) => mod.MonthlyActivityChart,
+    ),
+  {
+    loading: () => (
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "repeat(6, 1fr)",
+          alignItems: "end",
+          gap: 2,
+          height: 280,
+          borderBottom: 1,
+          borderColor: "divider",
+          p: 2,
+        }}
+      >
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Box
+            key={i}
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 1,
+              height: "100%",
+              justifyContent: "end",
+            }}
+          >
+            <Skeleton
+              variant="rectangular"
+              width="60%"
+              height={`${(i + 1) * 15}%`}
+              sx={{ borderRadius: "8px 8px 0 0" }}
+            />
+            <Skeleton variant="text" width={40} />
+          </Box>
+        ))}
+      </Box>
+    ),
+    ssr: true,
+  },
+);
 
 export const metadata: Metadata = {
   title: "Reports",
@@ -38,7 +94,9 @@ export default async function ReportsPage() {
         <Typography component="h1" variant="h4">
           <LocaleText message="Reports" />
         </Typography>
-        <Typography><LocaleText message="Collection and circulation at a glance." /></Typography>
+        <Typography>
+          <LocaleText message="Collection and circulation at a glance." />
+        </Typography>
       </Box>
       <Box className="content-card">
         <Box className="content-card-heading">
@@ -49,42 +107,7 @@ export default async function ReportsPage() {
             <LocaleText message="Borrowing requests recorded in the database." />
           </Typography>
         </Box>
-        <Box
-          aria-label="Monthly activity chart"
-          role="img"
-          sx={{
-            display: "grid",
-            gridTemplateColumns: "repeat(6, 1fr)",
-            alignItems: "end",
-            gap: 2,
-            height: 280,
-            borderBottom: 1,
-            borderColor: "divider",
-          }}
-        >
-          {latestMonths.map((item) => (
-            <Box
-              key={item.month}
-              sx={{ display: "flex", height: "100%", flexDirection: "column", justifyContent: "end", alignItems: "center", gap: 1 }}
-            >
-              <Box
-                sx={{
-                  width: "min(56px, 75%)",
-                  height: `${item.count === 0 ? 2 : Math.max(8, (item.count / maximumCount) * 90)}%`,
-                  borderRadius: "8px 8px 0 0",
-                  bgcolor: "primary.main",
-                  opacity: 0.72,
-                }}
-              />
-              <Typography color="text.secondary" sx={{ mb: 1.5 }} variant="caption">
-                <LocaleText message={item.month} />
-              </Typography>
-              <Typography color="text.secondary" variant="caption">
-                {item.count}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
+        <MonthlyActivityChart data={latestMonths} maximumCount={maximumCount} />
       </Box>
       <Box className="content-card" sx={{ mt: 3 }}>
         <Typography component="h2" sx={{ mb: 2 }} variant="h6">
@@ -93,8 +116,12 @@ export default async function ReportsPage() {
         <Table aria-label="Books by category">
           <TableHead>
             <TableRow>
-              <TableCell><LocaleText message="Category" /></TableCell>
-              <TableCell align="right"><LocaleText message="Titles in catalog" /></TableCell>
+              <TableCell>
+                <LocaleText message="Category" />
+              </TableCell>
+              <TableCell align="right">
+                <LocaleText message="Titles in catalog" />
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

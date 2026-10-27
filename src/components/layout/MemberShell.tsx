@@ -32,7 +32,13 @@ const links = [
   { label: "My profile", href: "/profile", icon: <AccountCircleOutlinedIcon /> },
 ];
 
-export function MemberShell({ children }: { children: React.ReactNode }) {
+export function MemberShell({
+  variant,
+  children
+}: {
+  variant: "A" | "B";
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const { t } = useLocale();
@@ -44,7 +50,10 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
           <Link className="portal-brand" href="/catalog">
             <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
               <AutoStoriesOutlinedIcon color="primary" />
-              <Typography sx={{ fontWeight: 800 }}>Book Hub</Typography>
+             <Typography sx={{ fontWeight: 800 }}>
+  {variant === "A" ? "Book Hub" : "Book Hub Plus"}
+</Typography>
+              {/* <Typography sx={{ fontWeight: 800 }}>Book Hub</Typography> */}
             </Stack>
           </Link>
           <Box className="portal-mode-toggle" >

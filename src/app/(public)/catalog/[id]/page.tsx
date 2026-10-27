@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { BookDetailView } from "@/features/library/components/BookDetailView";
 import { getServerBook } from "@/features/library/server-data";
+import { generateBookJsonLd } from "@/lib/metadata/jsonld";
 
 type BookPageProps = {
   params: Promise<{ id: string }>;
@@ -49,5 +50,17 @@ async function BookPageContent({ params }: BookPageProps) {
   const { id } = await params;
   const book = await getServerBook(id);
   if (!book) notFound();
-  return <BookDetailView bookId={id} initialBook={book} key={id} />;
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const jsonLd = generateBookJsonLd(book, siteUrl);
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <BookDetailView bookId={id} initialBook={book} key={id} />
+    </>
+  );
 }

@@ -3,6 +3,8 @@ import { getBook, removeBook, saveBook } from "@/features/library/repository";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { readBookInput } from "@/features/library/http-validation";
 import { getActiveUserById } from "@/features/users/repository";
+import { guardMutatingRequest } from "@/lib/security/mutate-guard";
+import { rateLimit, rateLimitExceededResponse } from "@/lib/security";
 
 export async function GET(
   _request: Request,
@@ -13,13 +15,18 @@ export async function GET(
   if (!book) {
     return Response.json({ error: "Book not found." }, { status: 404 });
   }
-  return Response.json(book);
+  return Response.json(book, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const blocked = await guardMutatingRequest(request, "api:books:write");
+  if (blocked) return blocked;
+
   const session = await auth();
   const user = session?.user
     ? await getActiveUserById(session.user.id)
@@ -29,6 +36,12 @@ export async function PUT(
       status: 403,
     });
   }
+
+  const userLimited = await rateLimit(`api:books:write:user:${user.id}`, 30, 60_000);
+  if (!userLimited.ok) {
+    return rateLimitExceededResponse(userLimited.retryAfterSec);
+  }
+
   const input = await readBookInput(request);
   if (input instanceof Response) return input;
   const { id } = await params;
@@ -46,9 +59,12 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const blocked = await guardMutatingRequest(request, "api:books:write");
+  if (blocked) return blocked;
+
   const session = await auth();
   const user = session?.user
     ? await getActiveUserById(session.user.id)
@@ -58,6 +74,12 @@ export async function DELETE(
       status: 403,
     });
   }
+
+  const userLimited = await rateLimit(`api:books:write:user:${user.id}`, 30, 60_000);
+  if (!userLimited.ok) {
+    return rateLimitExceededResponse(userLimited.retryAfterSec);
+  }
+
   const { id } = await params;
   try {
     await removeBook(id);
@@ -74,6 +96,7 @@ export async function DELETE(
   }
 }
 
+/** See docs/production-ecosystem.md — data cache + paths only. */
 async function revalidateBookCache(id: string) {
   revalidateTag("library-books", "max");
   revalidatePath("/catalog");

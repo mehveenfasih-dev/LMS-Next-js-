@@ -26,7 +26,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
   const { t } = useLocale();
   const [menuOpen, setMenuOpen] = useState(false);
   if (ready && user?.role === "member") {
-    return <MemberShell>{children}</MemberShell>;
+    return <MemberShell variant="A">{children}</MemberShell>;
   }
   const links = [
     { label: t("Browse books"), href: "/catalog" },

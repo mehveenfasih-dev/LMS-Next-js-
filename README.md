@@ -75,8 +75,9 @@ Set `AUTH_SECRET` to a strong random value. Never commit `.env.local` or share
 OAuth client secrets.
 
 See [the production ecosystem guide](./docs/production-ecosystem.md)
-for secret handling, validation, security controls, monitoring, testing,
-and caching behavior.
+for secret handling, Server Action validation/CSRF/rate limiting, monitoring,
+testing, and the cache-layer matrix. Core Web Vitals (LCP, CLS, INP) and how
+to measure them are documented in [docs/core-web-vitals.md](./docs/core-web-vitals.md).
 
 ## Data flow and database behavior
 
