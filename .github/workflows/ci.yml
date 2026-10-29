@@ -27,6 +27,8 @@ jobs:
 
       - name: Generate Prisma Client
         run: npx prisma generate
+        env:
+          DATABASE_URL: "sqlserver://localhost:1433;database=library_lms;user=ci_user;password=ci_password;encrypt=true;trustServerCertificate=true"
 
       - name: Check lint
         run: npm run lint
